@@ -3,13 +3,14 @@
   (:require [clojure.string :as string]
             [datascript.core :as d]
             [frontend.common.reaction :as reaction]
+            [frontend.common.task-time :as task-time]
             [frontend.worker.handler.block :as block-handler]
             [frontend.worker.handler.block-breadcrumb :as block-breadcrumb-handler]
             [frontend.worker.handler.comments :as comments-handler]
             [frontend.worker.handler.page :as worker-page]
             [frontend.worker.handler.property :as property-handler]
-            [frontend.worker.handler.query :as query-handler]
             [frontend.worker.handler.render-resource.common :as common]
+            [frontend.worker.handler.task-time :as task-time-handler]
             [logseq.common.config :as common-config]
             [logseq.common.util :as common-util]
             [logseq.db :as ldb]))
@@ -238,19 +239,17 @@
   [db resource-key _runtime]
   (let [block-uuid (second resource-key)
         block (common/entity-by-uuid! db :block-uuid block-uuid)
-        [history seconds]
-        (or (query-handler/task-spent-time db (:db/id block)
-                                           (common-util/time-ms))
-            [[] 0])]
+        history (task-time-handler/status-history db (:db/id block))
+        {:keys [sessions seconds]} (task-time/derive-time history (common-util/time-ms))]
     [#{[:task-time block-uuid]}
      {:history
       (mapv (fn [item]
-              {:created-at (:block/created-at item)
-               :status-uuid
-               (common/require-uuid!
-                :status-uuid
-                (:logseq.property.history/ref-value-uuid item))})
+              {:history-uuid (common/require-uuid! :history-uuid (:history-uuid item))
+               :created-at (:created-at item)
+               :status-uuid (common/require-uuid! :status-uuid (:status-uuid item))
+               :status-ident (:status-ident item)})
             history)
+      :sessions sessions
       :seconds seconds}]))
 
 (defn- route-block

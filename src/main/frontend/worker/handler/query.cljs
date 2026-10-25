@@ -4,6 +4,7 @@
             [clojure.string :as string]
             [clojure.walk :as walk]
             [datascript.core :as d]
+            [frontend.common.task-time :as task-time]
             [frontend.common.thread-api :refer [def-thread-api]]
             [frontend.worker.query-dsl :as query-dsl]
             [frontend.worker.state :as worker-state]
@@ -83,26 +84,13 @@
 
 (defn- status-history-spent-seconds
   [status-history now-ms]
-  (loop [[last-item item & others] status-history
-         time 0]
-    (if item
-      (let [last-status (:logseq.property.history/ref-value-ident last-item)
-            this-status (:logseq.property.history/ref-value-ident item)]
-        (if (and (= this-status :logseq.property/status.doing)
-                 (empty? others))
-          (-> (+ time (- now-ms (:block/created-at item)))
-              (quot 1000))
-          (let [time' (if (or
-                           (= last-status :logseq.property/status.doing)
-                           (and
-                            (not (contains? #{:logseq.property/status.canceled
-                                              :logseq.property/status.backlog
-                                              :logseq.property/status.done} last-status))
-                            (= this-status :logseq.property/status.done)))
-                        (+ time (- (:block/created-at item) (:block/created-at last-item)))
-                        time)]
-            (recur (cons item others) time'))))
-      (quot time 1000))))
+  (:seconds
+   (task-time/derive-time
+    (mapv (fn [item]
+            {:created-at (:block/created-at item)
+             :status-ident (:logseq.property.history/ref-value-ident item)})
+          status-history)
+    now-ms)))
 
 (defn task-spent-time
   [db block-id now-ms]

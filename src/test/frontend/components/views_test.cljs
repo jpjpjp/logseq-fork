@@ -253,13 +253,13 @@
     (is (= "Time Spent" (:name column)))
     (is (false? (:sortable? column)))
     (is (nil? ((:cell column) nil {:block/uuid zero-row} column)))
-    (with-redefs [frontend.components.block.status-history/task-spent-time-value-cp
-                  (fn [seconds] [:time seconds])]
-      (is (= [:time 11]
+    (with-redefs [frontend.components.block.status-history/task-time-button-cp
+                  (fn [block-uuid seconds] [:time block-uuid seconds])]
+      (is (= [:time timed-row 11]
              ((:cell column) nil {:block/uuid timed-row} column)))
-      (is (= [:time 93784]
+      (is (= [:time long-timed-row 93784]
              ((:cell column) nil {:block/uuid long-timed-row} column))
-          "Large durations use the same shared time display as task blocks."))))
+          "Large durations use the same shared clickable time display as task blocks."))))
 
 (deftest query-time-spent-column-is-visible-by-default-with-saved-order-test
   (is (= #{:user.property/new}
