@@ -233,3 +233,18 @@
       (is (some? (:outliner-op tx-meta)))
       (is (= #{:block/created-at}
              (disj (set (map :a tx-data)) :block/updated-at :block/tx-id))))))
+
+(deftest edit-backdates-the-session-start-and-shifts-the-creation-event-test
+  (let [{:keys [conn task history]} (create-task! (new-conn) "backdated"
+                                                  [[50000000 :todo] [60000000 :doing] [60010000 :done]])
+        [h-todo h-start h-end] history
+        session {:start-history-uuid h-start :end-history-uuid h-end}
+        new-start 10000000]
+    (is (= {:ok true}
+           (edit! conn task session [{:history-uuid h-start :created-at new-start}] 99999999)))
+    (is (= (- new-start 1000) (created-at conn h-todo)))
+    (is (= new-start (created-at conn h-start)))
+    (is (= 60010000 (created-at conn h-end)))
+    (is (= [:logseq.property/status.todo :logseq.property/status.doing :logseq.property/status.done]
+           (mapv :status-ident (task-time-handler/status-history @conn (task-eid conn task)))))
+    (is (= (quot (- 60010000 new-start) 1000) (:seconds (derived conn task 99999999))))))

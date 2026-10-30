@@ -94,7 +94,37 @@
       (is (= {:error :crosses-neighbor}
              (validate first-session [{:history-uuid :h3 :created-at 7000}])))
       (is (= {:error :crosses-neighbor}
-             (validate first-session [{:history-uuid :h2 :created-at 0}]))))
+             (validate {:start-history-uuid :h4 :end-history-uuid :h5}
+                       [{:history-uuid :h4 :created-at 5000}]))
+          "only the first event is shifted, never a previous session's boundary"))
+    (testing "moving the start before the first non-Doing event shifts that event"
+      (is (= {:error :invalid-timestamp}
+             (validate first-session [{:history-uuid :h2 :created-at 0}]))
+          "the shifted first event would land before the epoch")
+      (let [h' (history [10000 todo] [11000 doing] [15000 done])
+            result (task-time/validate-edit
+                    {:history h'
+                     :now-ms 99999
+                     :session {:start-history-uuid :h2 :end-history-uuid :h3}
+                     :changes [{:history-uuid :h2 :created-at 4000}]})]
+        (is (= {:updates [{:history-uuid :h2 :created-at 4000}]
+                :shifted [{:history-uuid :h1 :created-at 3000}]}
+               result))
+        (is (= {:updates [{:history-uuid :h2 :created-at 10000}]
+                :shifted [{:history-uuid :h1 :created-at 9000}]}
+               (task-time/validate-edit
+                {:history h'
+                 :now-ms 99999
+                 :session {:start-history-uuid :h2 :end-history-uuid :h3}
+                 :changes [{:history-uuid :h2 :created-at 10000}]}))
+            "a start equal to the first event also shifts it")
+        (is (= {:updates [{:history-uuid :h2 :created-at 10500}]}
+               (task-time/validate-edit
+                {:history h'
+                 :now-ms 99999
+                 :session {:start-history-uuid :h2 :end-history-uuid :h3}
+                 :changes [{:history-uuid :h2 :created-at 10500}]}))
+            "a start after the first event shifts nothing")))
     (testing "start must stay before end"
       (is (= {:error :start-not-before-end}
              (validate first-session [{:history-uuid :h2 :created-at 5000}])))
@@ -148,7 +178,7 @@
                                              :changes changes}))]
     (is (= {:updates [{:history-uuid :h2 :created-at 500}]}
            (validate [{:history-uuid :h2 :created-at 500}])))
-    (is (= {:error :crosses-neighbor}
+    (is (= {:error :invalid-timestamp}
            (validate [{:history-uuid :h2 :created-at 0}])))
     (is (= {:error :start-in-future}
            (validate [{:history-uuid :h2 :created-at 8000}])))

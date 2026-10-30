@@ -49,7 +49,7 @@
         task (or (d/entity db [:block/uuid task-uuid])
                  (throw (ex-info "Missing task for time edit" {:task-uuid task-uuid})))
         ownership-error (some #(history-entity-error db task (:history-uuid %)) changes)
-        {:keys [error updates]}
+        {:keys [error updates shifted]}
         (if ownership-error
           {:error ownership-error}
           (task-time/validate-edit {:history (status-history db (:db/id task))
@@ -63,7 +63,7 @@
          conn
          [[:transact [(mapv (fn [{:keys [history-uuid created-at]}]
                               [:db/add [:block/uuid history-uuid] :block/created-at created-at])
-                            updates)
+                            (concat updates shifted))
                       nil]]]
          nil)
         {:ok true}))))

@@ -102,6 +102,20 @@
                   indexes)
         :crosses-neighbor))))
 
+(defn- leading-event-shift
+  "When the session's start moves to or before the task's first status event,
+  and that event is not a Doing event, return an update moving it to one second
+  before the new start so the history stays ordered. Otherwise nil."
+  [history session start-created-at]
+  (let [start-idx (history-index history (:start-history-uuid session))
+        first-event (first history)]
+    (when (and (= 1 start-idx)
+               (not= :logseq.property/status.doing (:status-ident first-event))
+               start-created-at
+               (<= start-created-at (:created-at first-event)))
+      {:history-uuid (:history-uuid first-event)
+       :created-at (- start-created-at 1000)})))
+
 (defn validate-edit
   "Validate changing the boundaries of one derived session.
 
@@ -110,7 +124,9 @@
   {:history-uuid :created-at}, each naming one of the session's boundaries.
   Malformed requests throw; outcomes a user can correct return {:error code}.
   Otherwise returns {:updates [{:history-uuid :created-at}]} holding only
-  boundaries whose timestamp actually changes."
+  boundaries whose timestamp actually changes. Moving a session's start to or
+  before the task's first, non-Doing status event (typically its creation as
+  Todo) also returns that event in :shifted, moved just before the new start."
   [{:keys [history now-ms session changes]}]
   (when (empty? changes)
     (throw (ex-info "Task time edit requires changes" {:changes changes})))
@@ -135,17 +151,24 @@
             updates (filterv #(not= (:created-at %)
                                     (:created-at (get by-uuid (:history-uuid %))))
                              changes)
-            new-created-at (into {} (map (juxt :history-uuid :created-at)) updates)
+            new-start (some #(when (= (:start-history-uuid session') (:history-uuid %))
+                               (:created-at %))
+                            updates)
+            shift (leading-event-shift history session' new-start)
+            all-updates (cond-> updates shift (conj shift))
+            new-created-at (into {} (map (juxt :history-uuid :created-at)) all-updates)
             history' (mapv #(assoc % :created-at (get new-created-at (:history-uuid %)
                                                       (:created-at %)))
                            history)
             error (when (seq updates)
                     (ordering-error history' session'
-                                    (map #(history-index history' (:history-uuid %)) updates)))]
+                                    (map #(history-index history' (:history-uuid %)) all-updates)))]
         (cond
           (empty? updates) {:error :no-change}
+          (and shift (not (valid-timestamp? (:created-at shift)))) {:error :invalid-timestamp}
           error {:error error}
           (and (:active? session')
                (>= (get new-created-at (:start-history-uuid session')) now-ms))
           {:error :start-in-future}
-          :else {:updates (mapv #(select-keys % [:history-uuid :created-at]) updates)})))))
+          :else (cond-> {:updates (mapv #(select-keys % [:history-uuid :created-at]) updates)}
+                  shift (assoc :shifted [shift])))))))
