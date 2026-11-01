@@ -164,6 +164,22 @@
  :block.reaction/emoji-required-warning "请先选择一个表情回应。"
  :block.reaction/unsupported-emoji-warning "不支持该表情回应。"
 
+ :block.task-time/cancel "取消"
+ :block.task-time/edit "编辑"
+ :block.task-time/edit-session-label "编辑开始于 {1} 的计时时段"
+ :block.task-time/end "结束"
+ :block.task-time/error-crosses-neighbor "该时间必须晚于上一次状态变更，并早于下一次状态变更。"
+ :block.task-time/error-invalid-timestamp "请输入有效的日期和时间。"
+ :block.task-time/error-no-change "请先修改开始或结束时间再保存。"
+ :block.task-time/error-save-failed "无法保存更改，请重试。"
+ :block.task-time/error-stale "此任务的历史记录已更改。请关闭此窗口后重新打开。"
+ :block.task-time/error-start-in-future "开始时间必须早于当前时间。"
+ :block.task-time/error-start-not-before-end "开始时间必须早于结束时间。"
+ :block.task-time/now "现在"
+ :block.task-time/save "保存"
+ :block.task-time/sessions "计时时段"
+ :block.task-time/start "开始"
+
  :breadcrumb/more-ancestors "显示更多上级节点"
 
  :bug-report/desc "你可以帮助我们提交一个错误报告吗？我们会尽快解决。"

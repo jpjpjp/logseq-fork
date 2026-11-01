@@ -1823,7 +1823,8 @@
 
 (deftest block-task-time-resource-normalizes-statuses-and-uses-an-explicit-clock-test
   (when-let [api (render-resource-api)]
-    (let [{:keys [conn task-block]} (render-resource-fixture)
+    (let [{:keys [conn task-block task-history-doing task-history-done]}
+          (render-resource-fixture)
           doing-status-uuid (:block/uuid
                              (d/entity @conn :logseq.property/status.doing))
           done-status-uuid (:block/uuid
@@ -1835,8 +1836,20 @@
            @conn
            resource-key
            #{[:task-time task-block]}
-           {:history [{:created-at 1000 :status-uuid doing-status-uuid}
-                      {:created-at 4000 :status-uuid done-status-uuid}]
+           {:history [{:history-uuid task-history-doing
+                       :created-at 1000
+                       :status-uuid doing-status-uuid
+                       :status-ident :logseq.property/status.doing}
+                      {:history-uuid task-history-done
+                       :created-at 4000
+                       :status-uuid done-status-uuid
+                       :status-ident :logseq.property/status.done}]
+            :sessions [{:start-history-uuid task-history-doing
+                        :end-history-uuid task-history-done
+                        :start-ms 1000
+                        :end-ms 4000
+                        :seconds 3
+                        :active? false}]
             :seconds 3}
            response))))))
 
@@ -1871,7 +1884,7 @@
       (assert-resource-envelope @conn
                                 resource-key
                                 #{[:task-time journal-child-b]}
-                                {:history [] :seconds 0}
+                                {:history [] :sessions [] :seconds 0}
                                 response))))
 
 (deftest route-block-resource-watches-the-page-lookup-and-resolved-entities-test

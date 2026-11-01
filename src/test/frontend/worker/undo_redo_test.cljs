@@ -2,6 +2,7 @@
   (:require [cljs.test :refer [deftest is testing use-fixtures]]
             [datascript.core :as d]
             [frontend.worker.a-test-env]
+            [frontend.worker.handler.task-time :as task-time-handler]
             [frontend.worker.pipeline :as worker-pipeline]
             [frontend.worker.sync.apply-txs :as sync-apply]
             [frontend.worker.state :as worker-state]
@@ -549,6 +550,38 @@
       (let [redo-result (worker-undo-redo/redo test-repo)]
         (is (map? redo-result))
         (is (= "local-1" (:block/title (d/entity @conn [:block/uuid child-uuid]))))))))
+
+(deftest undo-redo-task-time-edit-test
+  (testing "editing a task time session boundary is undoable and redoable"
+    (worker-undo-redo/clear-history! test-repo)
+    (let [conn (worker-state/get-datascript-conn test-repo)
+          task (db-test/find-block-by-content @conn "task")
+          doing-uuid (random-uuid)
+          done-uuid (random-uuid)
+          created-at #(:block/created-at (d/entity @conn [:block/uuid %]))]
+      (d/transact! conn
+                   [{:block/uuid doing-uuid
+                     :block/created-at 1000
+                     :logseq.property.history/block (:db/id task)
+                     :logseq.property.history/property :logseq.property/status
+                     :logseq.property.history/ref-value :logseq.property/status.doing}
+                    {:block/uuid done-uuid
+                     :block/created-at 5000
+                     :logseq.property.history/block (:db/id task)
+                     :logseq.property.history/property :logseq.property/status
+                     :logseq.property.history/ref-value :logseq.property/status.done}])
+      (is (= {:ok true}
+             (task-time-handler/edit-task-time!
+              conn
+              {:task-uuid (:block/uuid task)
+               :session {:start-history-uuid doing-uuid :end-history-uuid done-uuid}
+               :changes [{:history-uuid doing-uuid :created-at 2000}]}
+              99999)))
+      (is (= 2000 (created-at doing-uuid)))
+      (is (map? (worker-undo-redo/undo test-repo)))
+      (is (= [1000 5000] (mapv created-at [doing-uuid done-uuid])))
+      (is (map? (worker-undo-redo/redo test-repo)))
+      (is (= [2000 5000] (mapv created-at [doing-uuid done-uuid]))))))
 
 (deftest undo-cycle-todo-removes-task-class-test
   (testing "undoing first status set should remove task class and status"

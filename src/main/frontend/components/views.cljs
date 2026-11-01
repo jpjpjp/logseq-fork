@@ -3913,7 +3913,7 @@
    :cell (fn [_table row _column]
            (when-let [seconds (get seconds-by-block (:block/uuid row))]
              (when (pos? seconds)
-               (status-history/task-spent-time-value-cp seconds))))})
+               (status-history/task-time-button-cp (:block/uuid row) seconds))))})
 
 (defn- get-query-columns
   [config view-entity properties seconds-by-block]

@@ -164,6 +164,22 @@
  :block.reaction/emoji-required-warning "Please pick an emoji reaction."
  :block.reaction/unsupported-emoji-warning "Unsupported reaction emoji."
 
+ :block.task-time/cancel "Cancel"
+ :block.task-time/edit "Edit"
+ :block.task-time/edit-session-label "Edit tracked session starting {1}"
+ :block.task-time/end "End"
+ :block.task-time/error-crosses-neighbor "The time must stay after the previous status change and before the next one."
+ :block.task-time/error-invalid-timestamp "Enter a valid date and time."
+ :block.task-time/error-no-change "Change the start or end time before saving."
+ :block.task-time/error-save-failed "Could not save the change. Try again."
+ :block.task-time/error-stale "This task's history changed. Close this window and open it again."
+ :block.task-time/error-start-in-future "The start time must be in the past."
+ :block.task-time/error-start-not-before-end "The start time must be before the end time."
+ :block.task-time/now "Now"
+ :block.task-time/save "Save"
+ :block.task-time/sessions "Tracked sessions"
+ :block.task-time/start "Start"
+
  :breadcrumb/more-ancestors "Show more ancestors"
 
  :bug-report/desc "Can you help us out by submitting a bug report? We'll get it sorted out as soon as we can."
